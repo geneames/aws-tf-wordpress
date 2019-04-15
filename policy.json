@@ -1,0 +1,17 @@
+{
+  "Id": "Policy1555283615687",
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "Stmt1555283613446",
+      "Action": "s3:*",
+      "Effect": "Allow",
+      "Resource": "arn:aws:s3:::sema-terraform-state",
+      "Principal": {
+        "AWS": [
+          "arn:aws:iam::476778078169:user/terraform-deployer"
+        ]
+      }
+    }
+  ]
+}

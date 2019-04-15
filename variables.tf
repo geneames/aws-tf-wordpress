@@ -12,9 +12,12 @@ variable region {
 ######################################################
 # PROVIDER VARIABLES
 ######################################################
-variable "aws_access_key" {}
-variable "aws_secret_key" {}
-variable "aws_region" {}
+variable "aws_profile" {
+  default = "terraform"
+}
+variable "aws_region" {
+  default = "us-west-2"
+}
 variable "private_key_path" {}
 variable "key_name" {
   default = "sema-us-west-2"

@@ -9,10 +9,10 @@ data "aws_availability_zones" "list" {}
 module "vpc" {
   source = "./modules/vpc"
 
-  base_name = "${var.base_name}"
-  network_address_space = "${var.network_address_space}"
-  environment = "${var.environment}"
-  eip_count = "${var.eip_count}"
+  cidr_block = "${var.network_address_space}"
+  name = "wordpress"
+  namespace = "sema"
+  stage = "dev"
 }
 
 //module "public_subnets_route_table" {
