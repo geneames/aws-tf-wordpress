@@ -7,12 +7,10 @@ data "aws_availability_zones" "list" {}
 # MODULES
 ######################################################
 module "vpc" {
-  source = "./modules/vpc"
+  source = "github.com/geneames/terraform-aws-vpc.git"
 
-  cidr_block = "${var.network_address_space}"
-  name = "wordpress"
-  namespace = "sema"
-  stage = "dev"
+
+
 }
 
 //module "public_subnets_route_table" {

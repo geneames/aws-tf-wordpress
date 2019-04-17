@@ -3,7 +3,8 @@
 **/modules/*.tf
 
 #  Local .terraform directories
-**/.terraform/*
+#**/.terraform/*
+.terraform
 
 # .tfstate files
 *.tfstate
