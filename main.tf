@@ -3,15 +3,6 @@
 ######################################################
 data "aws_availability_zones" "list" {}
 
-######################################################
-# MODULES
-######################################################
-module "vpc" {
-  source = "github.com/geneames/terraform-aws-vpc.git"
-
-
-
-}
 
 //module "public_subnets_route_table" {
 //  source = "./modules/public-subnets-route-table"
@@ -285,3 +276,19 @@ module "vpc" {
 //  route_table_id = "${module.pvt_sn_grp_b_az3_rt.rt_id}"
 //  subnet_id = "${module.private_subnet_group_b_az3.subnet_id}"
 //}
+
+output "subnets_1" {
+  value = "${cidrsubnet("192.168.0.192/26", 2, 0)}"
+}
+
+output "subnets_2" {
+  value = "${cidrsubnet("192.168.0.192/26", 2, 1)}"
+}
+
+output "subnets_3" {
+  value = "${cidrsubnet("192.168.0.192/26", 2, 2)}"
+}
+
+output "subnets_4" {
+  value = "${cidrsubnet("192.168.0.192/26", 2, 3)}"
+}
