@@ -31,7 +31,6 @@ module "private_subnets" {
   max_subnets = "${var.max_subnets}"
   az_ngw_ids = "${module.public_subnets.az_ngw_ids}"
 
-
   # Need to explicitly provide the count since Terraform currently can't use dynamic count on computed resources from different modules
   # https://github.com/hashicorp/terraform/issues/10857
   # https://github.com/hashicorp/terraform/issues/12125
