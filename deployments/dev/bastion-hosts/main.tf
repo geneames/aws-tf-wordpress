@@ -72,7 +72,7 @@ module "bastion-asg" {
 
   tags = {
     Tier              = "dmz"
-    Bastion-Cluster = "${var.region}-${local.namespace}-${local.stage}-${local.name}"
+    Bastion-Cluster = "${var.aws_region}-${local.namespace}-${local.stage}-${local.name}"
   }
 
   # Auto-scaling policies and CloudWatch metric alarms

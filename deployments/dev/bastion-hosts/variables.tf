@@ -1,3 +1,10 @@
+##################################################
+# Provider Variable
+##################################################
+variable "aws_region" {
+  default = "us-west-2"
+}
+
 variable "namespace" {
   type        = "string"
   description = "Namespace, which could be your organization name, e.g. 'eg' or 'cp'"
