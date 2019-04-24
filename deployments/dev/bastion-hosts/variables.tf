@@ -54,7 +54,6 @@ variable "enabled" {
 variable "image_id" {
   type        = "string"
   description = "The EC2 image ID to launch"
-  default     = ""
 }
 
 variable "instance_initiated_shutdown_behavior" {
@@ -71,13 +70,11 @@ variable "instance_type" {
 variable "iam_instance_profile_name" {
   type        = "string"
   description = "The IAM instance profile name to associate with launched instances"
-  default     = ""
 }
 
 variable "key_name" {
   type        = "string"
   description = "The SSH key name that should be used for the instance"
-  default     = ""
 }
 
 variable "security_group_ids" {
@@ -159,6 +156,7 @@ variable "min_size" {
 variable "subnet_ids" {
   description = "A list of subnet IDs to launch resources in"
   type        = "list"
+  default     = []
 }
 
 variable "default_cooldown" {
@@ -359,4 +357,28 @@ variable "cpu_utilization_low_statistic" {
   type        = "string"
   default     = "Average"
   description = "The statistic to apply to the alarm's associated metric. Either of the following is supported: `SampleCount`, `Average`, `Sum`, `Minimum`, `Maximum`"
+}
+
+variable "ssh_user" {
+  type        = "string"
+  default = "ec2-user" // For Amazon Linux
+  description = "Default SSH user for this AMI. e.g. `ec2user` for Amazon Linux and `ubuntu` for Ubuntu systems"
+}
+
+variable "user_data_file" {
+  type        = "string"
+  default     = "user_data.sh"
+  description = "User data file"
+}
+
+variable "user_data" {
+  type        = "list"
+  default     = []
+  description = "User data content"
+}
+
+variable "zone_id" {
+  type        = "string"
+  default     = ""
+  description = "Route53 DNS Zone ID"
 }

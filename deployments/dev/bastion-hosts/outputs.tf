@@ -33,11 +33,6 @@ output "autoscaling_group_max_size" {
   value       = "${module.bastion-asg.autoscaling_group_max_size}"
 }
 
-output "autoscaling_group_desired_capacity" {
-  description = "The number of Amazon EC2 instances that should be running in the group"
-  value       = "${module.bastion-asg.autoscaling_group_desired_capacity}"
-}
-
 output "autoscaling_group_default_cooldown" {
   description = "Time between a scaling activity and the succeeding scaling activity"
   value       = "${module.bastion-asg.autoscaling_group_default_cooldown}"

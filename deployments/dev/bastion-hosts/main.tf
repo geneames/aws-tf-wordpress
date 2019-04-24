@@ -7,15 +7,15 @@ locals {
   name      = "${var.name}"
 
 
-  userdata = <<USERDATA
-    #!/bin/bash
-    cat <<"__EOF__" > /home/ec2-user/.ssh/config
-    Host *
-        StrictHostKeyChecking no
-    __EOF__
-    chmod 600 /home/ec2-user/.ssh/config
-    chown ec2-user:ec2-user /home/ec2-user/.ssh/config
-  USERDATA
+//  userdata = <<USERDATA
+//    #!/bin/bash
+//    cat <<"__EOF__" > /home/ec2-user/.ssh/config
+//    Host *
+//        StrictHostKeyChecking no
+//    __EOF__
+//    chmod 600 /home/ec2-user/.ssh/config
+//    chown ec2-user:ec2-user /home/ec2-user/.ssh/config
+//  USERDATA
 }
 
 ######################################################
@@ -52,23 +52,52 @@ data "aws_subnet_ids" "subnets_for_asg" {
   }
 }
 
+data "aws_ami" "bastion-ami" {
+  most_recent      = true
+  name_regex       = "^sema-bastion-*."
+  owners           = ["self"]
+}
+
+data "aws_route53_zone" "domain" {
+  count   = "${var.zone_id != "" ? 1 : 0}"
+  zone_id = "${var.zone_id}"
+}
+
+data "template_file" "user_data" {
+  template = "${file("${path.module}/user_data.sh")}"
+
+  vars {
+    user_data       = "${join("\n", var.user_data)}"
+    welcome_message = "${var.stage}"
+    hostname        = "${var.name}.${join("",data.aws_route53_zone.domain.*.name)}"
+    search_domains  = "${join("",data.aws_route53_zone.domain.*.name)}"
+    ssh_user        = "${var.ssh_user}"
+  }
+}
+
+
 module "bastion-asg" {
-  source = "github.com/geneames/terraform-aws-ec2-autoscale-group.git?ref=0.1"
+  source = "git@github.com:geneames/terraform-aws-ec2-autoscale-group.git?ref=tags/0.1"
 
   namespace                   = "${local.namespace}"
   name                        = "${local.name}"
   stage                       = "${local.stage}"
 
-  image_id                    = "${var.image_id}"
+  image_id                    = "${data.aws_ami.bastion-ami.id}"
   instance_type               = "${var.instance_type}"
-  security_group_ids          = []
+  security_group_ids          = ["${aws_security_group.bastion-sg.id}"]
   subnet_ids                  = ["${data.aws_subnet_ids.subnets_for_asg.ids}"]
   health_check_type           = "${var.health_check_type}"
   min_size                    = "${var.min_size}"
   max_size                    = "${var.max_size}"
   wait_for_capacity_timeout   = "${var.wait_for_capacity_timeout}"
   associate_public_ip_address = true
-  user_data_base64            = "${base64encode(local.userdata)}"
+//  user_data_base64            = "${base64encode(local.userdata)}"
+  user_data_base64            = "${base64encode(data.template_file.user_data.template)}"
+  key_name                    = "${var.key_name}"
+  iam_instance_profile_name   = "${var.iam_instance_profile_name}"
+
+
 
   tags = {
     Tier              = "dmz"
@@ -79,4 +108,33 @@ module "bastion-asg" {
   autoscaling_policies_enabled           = "true"
   cpu_utilization_high_threshold_percent = "${var.cpu_utilization_high_threshold_percent}"
   cpu_utilization_low_threshold_percent  = "${var.cpu_utilization_low_threshold_percent}"
+}
+
+resource "aws_security_group" "bastion-sg" {
+  name        = "${local.namespace}-${local.stage}-${local.name}-bastion-sg"
+  vpc_id      = "${data.aws_vpc.vpc.id}"
+  description = "Bastion security group (only SSH inbound access is allowed)"
+
+  tags = {
+    Tier              = "dmz"
+    Bastion-Cluster = "${var.aws_region}-${local.namespace}-${local.stage}-${local.name}"
+  }
+
+  ingress {
+    protocol  = "tcp"
+    from_port = 22
+    to_port   = 22
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    protocol  = "-1"
+    from_port = 0
+    to_port   = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }

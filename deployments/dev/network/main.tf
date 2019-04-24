@@ -11,7 +11,7 @@ locals {
 # MODULES
 ######################################################
 module "vpc" {
-  source = "github.com/geneames/terraform-aws-vpc.git?ref=0.1"
+  source = "git@github.com:geneames/terraform-aws-vpc.git?ref=tags/0.1"
 
   cidr_block = "${var.cidr_block}"
   name = "wordpress"
@@ -20,7 +20,7 @@ module "vpc" {
 }
 
 module "private_subnets" {
-  source             = "github.com/geneames/terraform-aws-multi-az-subnets.git?ref=0.1"
+  source             = "git@github.com:geneames/terraform-aws-multi-az-subnets.git?ref=tags/0.1"
   namespace          = "${var.namespace}"
   stage              = "${var.stage}"
   name               = "${var.name}"
@@ -39,7 +39,7 @@ module "private_subnets" {
 }
 
 module "public_subnets" {
-  source             = "github.com/geneames/terraform-aws-multi-az-subnets.git?ref=0.1"
+  source             = "git@github.com:geneames/terraform-aws-multi-az-subnets.git?ref=0.1"
   namespace          = "${var.namespace}"
   stage              = "${var.stage}"
   name               = "${var.name}"

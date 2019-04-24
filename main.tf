@@ -277,18 +277,28 @@ data "aws_availability_zones" "list" {}
 //  subnet_id = "${module.private_subnet_group_b_az3.subnet_id}"
 //}
 
-output "subnets_1" {
-  value = "${cidrsubnet("192.168.0.192/26", 2, 0)}"
+data "aws_ami" "bastion-ami" {
+  most_recent      = true
+  name_regex       = "^sema-bastion-*."
+  owners           = ["self"]
 }
 
-output "subnets_2" {
-  value = "${cidrsubnet("192.168.0.192/26", 2, 1)}"
+output "" {
+  value = "${data.aws_ami.bastion-ami.id}"
 }
 
-output "subnets_3" {
-  value = "${cidrsubnet("192.168.0.192/26", 2, 2)}"
-}
-
-output "subnets_4" {
-  value = "${cidrsubnet("192.168.0.192/26", 2, 3)}"
-}
+//output "subnets_1" {
+//  value = "${cidrsubnet("192.168.0.192/26", 2, 0)}"
+//}
+//
+//output "subnets_2" {
+//  value = "${cidrsubnet("192.168.0.192/26", 2, 1)}"
+//}
+//
+//output "subnets_3" {
+//  value = "${cidrsubnet("192.168.0.192/26", 2, 2)}"
+//}
+//
+//output "subnets_4" {
+//  value = "${cidrsubnet("192.168.0.192/26", 2, 3)}"
+//}
