@@ -5,36 +5,24 @@ locals {
   namespace = "${var.namespace}"
   stage     = "${var.stage}"
   name      = "${var.name}"
-
-
-//  userdata = <<USERDATA
-//    #!/bin/bash
-//    cat <<"__EOF__" > /home/ec2-user/.ssh/config
-//    Host *
-//        StrictHostKeyChecking no
-//    __EOF__
-//    chmod 600 /home/ec2-user/.ssh/config
-//    chown ec2-user:ec2-user /home/ec2-user/.ssh/config
-//  USERDATA
 }
 
 ######################################################
 # Environment Data
 ######################################################
-data "aws_vpc" "vpc" {
-  filter {
-    name = "state"
-    values = ["available"]
-  }
-
-  filter {
-    name = "tag:Name"
-    values = ["${local.namespace}-${local.stage}-${local.name}"]
+data "terraform_remote_state" "network" {
+  backend = "s3"
+  config {
+    bucket = "sema-terraform-state"
+    region = "us-west-2"
+    key = "dev/network/terraform.state"
+    dynamodb_table = "terraform-state-locking"
+    encrypt = true
   }
 }
 
 data "aws_subnet_ids" "subnets_for_asg" {
-  vpc_id = "${data.aws_vpc.vpc.id}"
+  vpc_id = "${data.terraform_remote_state.network.vpc_id}"
 
   filter {
     name = "state"
@@ -43,7 +31,7 @@ data "aws_subnet_ids" "subnets_for_asg" {
 
   filter {
     name = "availability-zone"
-    values = ["us-west-2a", "us-west-2b"]
+    values = ["${var.availability_zones}"]
   }
 
   filter {
@@ -75,7 +63,9 @@ data "template_file" "user_data" {
   }
 }
 
-
+######################################################
+# Bastion Autoscaling Group
+######################################################
 module "bastion-asg" {
   source = "git@github.com:geneames/terraform-aws-ec2-autoscale-group.git?ref=tags/0.1"
 
@@ -92,8 +82,7 @@ module "bastion-asg" {
   max_size                    = "${var.max_size}"
   wait_for_capacity_timeout   = "${var.wait_for_capacity_timeout}"
   associate_public_ip_address = true
-//  user_data_base64            = "${base64encode(local.userdata)}"
-  user_data_base64            = "${base64encode(data.template_file.user_data.template)}"
+  user_data_base64              = "${base64encode(data.template_file.user_data.rendered)}"
   key_name                    = "${var.key_name}"
   iam_instance_profile_name   = "${var.iam_instance_profile_name}"
 
@@ -110,14 +99,17 @@ module "bastion-asg" {
   cpu_utilization_low_threshold_percent  = "${var.cpu_utilization_low_threshold_percent}"
 }
 
+######################################################
+# Bastion Server Security
+######################################################
 resource "aws_security_group" "bastion-sg" {
-  name        = "${local.namespace}-${local.stage}-${local.name}-bastion-sg"
-  vpc_id      = "${data.aws_vpc.vpc.id}"
+  name        = "${var.namespace}-${var.stage}-${var.name}-bastion-sg"
+  vpc_id      = "${data.terraform_remote_state.network.vpc_id}"
   description = "Bastion security group (only SSH inbound access is allowed)"
 
   tags = {
     Tier              = "dmz"
-    Bastion-Cluster = "${var.aws_region}-${local.namespace}-${local.stage}-${local.name}"
+    Bastion-Cluster = "${var.aws_region}-${var.namespace}-${var.stage}-${var.name}"
   }
 
   ingress {

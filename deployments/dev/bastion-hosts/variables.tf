@@ -382,3 +382,8 @@ variable "zone_id" {
   default     = ""
   description = "Route53 DNS Zone ID"
 }
+
+variable availability_zones {
+  type        = "list"
+  description = "The availability zones to deploy the bastion servers into"
+}
