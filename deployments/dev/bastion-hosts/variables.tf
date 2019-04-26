@@ -365,6 +365,12 @@ variable "ssh_user" {
   description = "Default SSH user for this AMI. e.g. `ec2user` for Amazon Linux and `ubuntu` for Ubuntu systems"
 }
 
+variable "welcome_message" {
+  type        = "string"
+  default = "Sema Bastion"
+  description = "Bastion banner"
+}
+
 variable "user_data_file" {
   type        = "string"
   default     = "user_data.sh"
