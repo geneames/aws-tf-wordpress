@@ -93,3 +93,10 @@ fabric.properties
 
 # Sonarlint plugin
 .idea/sonarlint
+
+# package directories
+node_modules
+jspm_packages
+
+# Serverless directories
+.serverless
