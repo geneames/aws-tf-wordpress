@@ -72,7 +72,7 @@ module "bastion-asg" {
   source = "git@github.com:geneames/terraform-aws-ec2-autoscale-group.git?ref=tags/0.1"
 
   namespace                   = "${local.namespace}"
-  name                        = "${local.name}"
+  name                        = "${local.name}-bastion-asg"
   stage                       = "${local.stage}"
 
   image_id                    = "${data.aws_ami.bastion-ami.id}"
