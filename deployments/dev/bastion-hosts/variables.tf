@@ -377,12 +377,6 @@ variable "user_data_file" {
   description = "User data file"
 }
 
-variable "user_data" {
-  type        = "list"
-  default     = []
-  description = "User data content"
-}
-
 variable "zone_id" {
   type        = "string"
   default     = ""
