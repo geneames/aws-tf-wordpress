@@ -132,3 +132,35 @@ resource "aws_security_group" "bastion-sg" {
     create_before_destroy = true
   }
 }
+
+######################################################
+# Bastion Autoscaling Group Lifecycle Hooks
+######################################################
+resource "aws_autoscaling_lifecycle_hook" "launch_hook" {
+  autoscaling_group_name = "${module.bastion-asg.autoscaling_group_name}"
+  lifecycle_transition = "autoscaling:EC2_INSTANCE_LAUNCHING"
+  name = "bastion-asg-instance-launch-hook"
+  notification_target_arn = "${aws_sns_topic.asg-lifecycle-topic.arn}"
+  role_arn = "arn:aws:iam::476778078169:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+  heartbeat_timeout = 300
+  default_result = "ABANDON"
+
+
+  depends_on = [ "aws_sns_topic.asg-lifecycle-topic" ]
+}
+
+resource "aws_autoscaling_lifecycle_hook" "terminate_hook" {
+  autoscaling_group_name = "${module.bastion-asg.autoscaling_group_name}"
+  lifecycle_transition = "autoscaling:EC2_INSTANCE_TERMINATING"
+  name = "bastion-asg-instance-terminate-hook"
+  notification_target_arn = "${aws_sns_topic.asg-lifecycle-topic.arn}"
+  role_arn = "arn:aws:iam::476778078169:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
+  heartbeat_timeout = 300
+  default_result = "ABANDON"
+
+  depends_on = [ "aws_sns_topic.asg-lifecycle-topic" ]
+}
+
+resource "aws_sns_topic" "asg-lifecycle-topic" {
+  name = "bastion-asg-lifecycle-topic"
+}

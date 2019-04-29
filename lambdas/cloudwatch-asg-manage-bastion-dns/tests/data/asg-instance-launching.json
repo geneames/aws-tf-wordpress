@@ -1,0 +1,19 @@
+{
+  "version": "0",
+  "id": "33380255-0587-4796-c5c4-465b89b263f7",
+  "detail-type": "EC2 Instance-launch Lifecycle Action",
+  "source": "aws.autoscaling",
+  "account": "476778078169",
+  "time": "2019-04-28T21:41:46Z",
+  "region": "us-west-2",
+  "resources": [
+    "arn:aws:autoscaling:us-west-2:476778078169:autoScalingGroup:e279778f-df13-4191-8f98-bef2cba234bb:autoScalingGroupName/sema-dev-wordpress-bastion-asg-20190428212221607000000003"
+  ],
+  "detail": {
+    "LifecycleActionToken": "c0700caf-5f0f-4510-8132-1643a4add1d9",
+    "AutoScalingGroupName": "sema-dev-wordpress-bastion-asg-20190428212221607000000003",
+    "LifecycleHookName": "bastion-asg-instance-launch-hook",
+    "EC2InstanceId": "i-0160c2cedd962707e",
+    "LifecycleTransition": "autoscaling:EC2_INSTANCE_LAUNCHING"
+  }
+}
