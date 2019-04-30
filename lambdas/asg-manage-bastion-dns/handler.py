@@ -1,3 +1,4 @@
+import os
 import uuid
 import logging
 import json
@@ -6,7 +7,23 @@ from botocore.exceptions import ClientError
 
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(asctime)s: %(funcName)s: %(lineno)d: %(message)s')
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+
+# Logging Level is set with Environment Variable LOG_LEVEL
+#
+# Level	        Numeric Value
+# ============================
+# CRITICAL          50
+# ERROR 	        40
+# WARNING	        30
+# INFO	            20
+# DEBUG	            10
+# NOTSET             0
+log_level = os.getenv('LOG_LEVEL')
+if log_level in ['50', '40', '30', '20', '10', '0']:
+    logger.setLevel(int(log_level))
+else:
+    # Default to INFO level
+    logger.setLevel(logging.INFO)
 
 
 def manage_dns_recordset(action_flag: str, ip_address: str, health_check_id: str):
@@ -141,6 +158,29 @@ def delete_health_check(health_check_id: str):
     return response
 
 
+def get_hc_id_for_ip_address(ip_address: str):
+    """Gets the Health Check ID for given IP Address
+
+
+    :param ip_address: string
+    :return: Health Check Id if it exists, otherwise None
+    """
+
+    r53 = boto3.client('route53')
+    health_check_id = None
+    try:
+        health_checks = r53.list_health_checks()
+        for k in health_checks['HealthChecks']:
+            if k['HealthCheckConfig']['IPAddress'] == ip_address:
+                health_check_id = k['Id']
+
+    except ClientError as e:
+        logger.debug(e)
+        return None
+
+    return health_check_id
+
+
 def manage_bastion_dns(event: str, context: str):
     """Handler function for the AWS Lambda
 
@@ -187,32 +227,9 @@ def manage_bastion_dns(event: str, context: str):
     return response
 
 
-def get_hc_id_for_ip_address(ip_address: str):
-    """Gets the Health Check ID for given IP Address
-
-
-    :param ip_address: string
-    :return: Health Check Id if it exists, otherwise None
-    """
-
-    r53 = boto3.client('route53')
-    health_check_id = None
-    try:
-        health_checks = r53.list_health_checks()
-        for k in health_checks['HealthChecks']:
-            if k['HealthCheckConfig']['IPAddress'] == ip_address:
-                health_check_id = k['Id']
-
-    except ClientError as e:
-        logger.debug(e)
-        return None
-
-    return health_check_id
-
-
 def main():
     """Exercise bucket_exists()"""
-    with open('tests/data/asg-instance-launching.json') as json_file:
+    with open('tests/data/asg-instance-terminating.json') as json_file:
         data = json.load(json_file)
         manage_bastion_dns(data, None)
 

@@ -13,7 +13,7 @@
     "LifecycleActionToken": "35396d5f-e518-44e9-b8bf-101567c95e92",
     "AutoScalingGroupName": "sema-dev-wordpress-bastion-asg-20190428212221607000000003",
     "LifecycleHookName": "bastion-asg-instance-terminate-hook",
-    "EC2InstanceId": "i-00d579324ea7d205c",
+    "EC2InstanceId": "i-0690d5acab0f95ca8",
     "LifecycleTransition": "autoscaling:EC2_INSTANCE_TERMINATING"
   }
 }
