@@ -4,8 +4,12 @@ import json
 import boto3
 from botocore.exceptions import ClientError
 
+logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(asctime)s: %(funcName)s: %(lineno)d: %(message)s')
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 
-def manage_dns_recordset(action_flag, ip_address, health_check_id):
+
+def manage_dns_recordset(action_flag: str, ip_address: str, health_check_id: str):
     """Create Route 53 Health Check for given IP Address
 
     :param action_flag: string
@@ -41,14 +45,14 @@ def manage_dns_recordset(action_flag, ip_address, health_check_id):
             }
         )
     except ClientError as e:
-        logging.debug(e)
+        logger.debug(e)
         return None
 
-    logging.debug(response)
+    logger.debug(response)
     return 'Success'
 
 
-def get_instance_ip_address(instance_id):
+def get_instance_ip_address(instance_id: str):
     """Create Route 53 Health Check for given IP Address
 
 
@@ -57,20 +61,22 @@ def get_instance_ip_address(instance_id):
     """
 
     ec2 = boto3.client('ec2')
+    public_ip_address = ''
     try:
         instance_data = ec2.describe_instances(
             InstanceIds=[instance_id]
         )
+        logger.debug(instance_data)
         public_ip_address = instance_data['Reservations'][0]['Instances'][0]['PublicIpAddress']
 
     except ClientError as e:
-        logging.debug(e)
-        return None
+        logger.debug(e)
+        return public_ip_address
 
     return public_ip_address
 
 
-def create_health_check(ip_address):
+def create_health_check(ip_address: str):
     """Create Route 53 Health Check for given IP Address
 
 
@@ -79,6 +85,7 @@ def create_health_check(ip_address):
     """
 
     r53 = boto3.client('route53')
+    health_check_id = ''
     try:
         # Create Health Check
         create_health_check_response = r53.create_health_check(
@@ -92,7 +99,7 @@ def create_health_check(ip_address):
 
         # Apply Tags to health check
         health_check_id = create_health_check_response['HealthCheck']['Id']
-        logging.debug(health_check_id)
+        logger.debug(health_check_id)
         health_check_name = 'sema-bastion-{}'.format(ip_address.replace('.', '-'))
         r53.change_tags_for_resource(
             ResourceType='healthcheck',
@@ -106,14 +113,14 @@ def create_health_check(ip_address):
         )
 
     except ClientError as e:
-        logging.debug(e)
-        return None
+        logger.debug(e)
+        return health_check_id
 
-    logging.debug(json.dumps(create_health_check_response))
+    logger.debug(json.dumps(create_health_check_response))
     return health_check_id
 
 
-def delete_health_check(health_check_id):
+def delete_health_check(health_check_id: str):
     """Delete Route 53 Health Check for given IP Address
 
 
@@ -128,13 +135,13 @@ def delete_health_check(health_check_id):
         )
 
     except ClientError as e:
-        logging.debug(e)
+        logger.debug(e)
         return None
 
     return response
 
 
-def manage_bastion_dns(event, context):
+def manage_bastion_dns(event: str, context: str):
     """Handler function for the AWS Lambda
 
 
@@ -146,17 +153,19 @@ def manage_bastion_dns(event, context):
     response = None
     event_type = event['detail-type']
     instance_id = event['detail']['EC2InstanceId']
+    logger.debug(instance_id)
     ip_address = get_instance_ip_address(instance_id)
+    logger.debug(ip_address)
 
     # Create Health Check & DNS entry for Bastion Instance
     if event_type == 'EC2 Instance-launch Lifecycle Action':
         health_check_id = create_health_check(ip_address)
         response = manage_dns_recordset('CREATE', ip_address, health_check_id)
         if response is not None:
-            logging.info('DNS record set and associated health check added for instance %s'
+            logger.info('DNS record set and associated health check added for instance {}'
                          .format(instance_id))
         else:
-            logging.warning('Creation of DNS record set and associated health check failed for instance %s'
+            logger.warning('Creation of DNS record set and associated health check failed for instance {}'
                             .format(instance_id))
 
     # Remove DNS Entry & Health Check for Bastion Instance
@@ -165,20 +174,20 @@ def manage_bastion_dns(event, context):
         response = manage_dns_recordset('DELETE', ip_address, health_check_id)
         response = delete_health_check(health_check_id)
         if response is not None:
-            logging.info('DNS record set and associated health check removed for instance %s'
+            logger.info('DNS record set and associated health check removed for instance {}'
                          .format(instance_id))
         else:
-            logging.warning('Removal of DNS record set and associated health check failed for instance %s'
+            logger.warning('Removal of DNS record set and associated health check failed for instance {}'
                             .format(instance_id))
 
     # Not sure exactly going on...
     else:
-        logging.warning('Instance lifecycle indeterminate.')
+        logger.warning('Instance lifecycle indeterminate.')
 
     return response
 
 
-def get_hc_id_for_ip_address(ip_address):
+def get_hc_id_for_ip_address(ip_address: str):
     """Gets the Health Check ID for given IP Address
 
 
@@ -195,7 +204,7 @@ def get_hc_id_for_ip_address(ip_address):
                 health_check_id = k['Id']
 
     except ClientError as e:
-        logging.debug(e)
+        logger.debug(e)
         return None
 
     return health_check_id
@@ -203,8 +212,7 @@ def get_hc_id_for_ip_address(ip_address):
 
 def main():
     """Exercise bucket_exists()"""
-    logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(asctime)s: %(message)s')
-    with open('tests/data/asg-instance-terminating.json') as json_file:
+    with open('tests/data/asg-instance-launching.json') as json_file:
         data = json.load(json_file)
         manage_bastion_dns(data, None)
 

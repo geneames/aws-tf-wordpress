@@ -55,7 +55,7 @@ data "aws_route53_zone" "domain" {
 # Bastion User Data
 ######################################################
 data "template_file" "user_data" {
-  template = "${file("${path.module}/user_data.sh")}"
+  template = "${file("${path.module}/files/user_data.sh")}"
 
   vars {
     welcome_message = "${var.welcome_message}"
@@ -163,4 +163,6 @@ resource "aws_autoscaling_lifecycle_hook" "terminate_hook" {
 
 resource "aws_sns_topic" "asg-lifecycle-topic" {
   name = "bastion-asg-lifecycle-topic"
+
+//  depends_on = ["aws_lambda_function.manage_bastion_dns_rsets"]
 }
