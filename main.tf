@@ -1,25 +1,41 @@
 ######################################################
 # DATA
 ######################################################
-data "aws_availability_zones" "list" {}
-
-data "aws_route53_zone" "domain" {
-  count   = "${var.zone_id != "" ? 1 : 0}"
-  zone_id = "${var.zone_id}"
-}
-
-data "template_file" "user_data" {
-  template = "${file("${path.module}/user_data.sh")}"
-
-  vars {
-    welcome_message = "${var.welcome_message}"
-    hostname        = "${var.name}.${join("",data.aws_route53_zone.domain.*.name)}"
-    search_domains  = "${join("",data.aws_route53_zone.domain.*.name)}"
-    ssh_user        = "${var.ssh_user}"
+data "terraform_remote_state" "network" {
+  backend = "s3"
+  config {
+    bucket = "sema-terraform-state"
+    region = "us-west-2"
+    key = "dev/network/terraform.state"
+    dynamodb_table = "terraform-state-locking"
+    encrypt = true
   }
 }
 
-output "user_data" {
-  value = "${data.template_file.user_data.rendered}"
+data "aws_subnet_ids" "subnets_for_efs" {
+  vpc_id = "${data.terraform_remote_state.network.vpc_id}"
+
+  filter {
+    name = "state"
+    values = ["available"]
+  }
+
+  filter {
+    name = "availability-zone"
+    values = ["${var.availability_zones}"]
+  }
+
+  filter {
+    name = "tag:Type"
+    values = ["private"]
+  }
+}
+
+output "subnet" {
+  value = "${element(data.aws_subnet_ids.subnets_for_efs.ids, 1)}"
+}
+
+output "subnet_count" {
+  value = "${length(data.aws_subnet_ids.subnets_for_efs.ids)}"
 }
 

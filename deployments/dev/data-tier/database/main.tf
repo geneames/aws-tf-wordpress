@@ -34,57 +34,55 @@ data "aws_subnet_ids" "subnets_for_rds" {
     values = ["private"]
   }
 }
-module "rds_serverless_aurora_mysql_cluster" {
-  source = "git@github.com:geneames/terraform-aws-rds-cluster.git?ref=tags/0.1"
-
-  namespace       = "${var.namespace}"
-  stage           = "${var.stage}"
-  name            = "${var.name}"
-  engine          = "${var.engine}"
-  engine_mode     = "${var.engine_mode}"
-  admin_user      = "${var.admin_user}"
-  admin_password  = "${var.admin_password}"
-  db_name         = "${var.db_name}"
-  db_port         = "${var.db_port}"
-  vpc_id          = "${data.terraform_remote_state.network.vpc_id}"
-  security_groups = ["${aws_security_group.rds-sg.name}"]
-  subnets         = ["${data.aws_subnet_ids.subnets_for_rds.ids}"]
-
-  scaling_configuration = [
-    {
-      auto_pause               = "${var.auto_pause}"
-      max_capacity             = "${var.max_capacity}"
-      min_capacity             = "${var.min_capacity}"
-      seconds_until_auto_pause = "${var.seconds_until_auto_pause}"
-    },
-  ]
-}
 
 resource "aws_security_group" "rds-sg" {
-  name        = "${var.namespace}-${var.stage}-${var.name}-rds-sg"
-  vpc_id      = "${data.terraform_remote_state.network.vpc_id}"
+  name = "${var.namespace}-${var.stage}-${var.name}-sg"
+  vpc_id = "${data.terraform_remote_state.network.vpc_id}"
   description = "RDS security group (only port 3306 access is allowed)"
 
   tags = {
-    Tier              = "dmz"
-    Bastion-Cluster = "${var.aws_region}-${var.namespace}-${var.stage}-${var.name}"
+    Tier = "data"
+    RDS-Cluster = "${var.aws_region}-${var.namespace}-${var.stage}-${var.name}"
   }
 
   ingress {
-    protocol  = "tcp"
+    protocol = "tcp"
     from_port = "${var.db_port}"
-    to_port   = "${var.db_port}"
+    to_port = "${var.db_port}"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
-    protocol  = "-1"
+    protocol = "-1"
     from_port = 0
-    to_port   = 0
-    cidr_blocks = ["0.0.0.0/0"]
+    to_port = 0
+    cidr_blocks = [
+      "0.0.0.0/0"]
   }
 
   lifecycle {
     create_before_destroy = true
   }
 }
+
+module "rds_serverless_aurora_mysql_cluster" {
+  source = "git@github.com:geneames/terraform-aws-rds-cluster.git?ref=tags/0.1"
+
+  namespace           = "${var.namespace}"
+  stage               = "${var.stage}"
+  name                = "${var.name}"
+  cluster_size        = "${var.cluster_size}"
+  instance_type       = "${var.instance_type}"
+  engine              = "${var.engine}"
+  engine_mode         = "${var.engine_mode}"
+  admin_user          = "${var.admin_user}"
+  admin_password      = "${var.admin_password}"
+  db_name             = "${var.db_name}"
+  db_port             = "${var.db_port}"
+  vpc_id              = "${data.terraform_remote_state.network.vpc_id}"
+  subnets             = ["${data.aws_subnet_ids.subnets_for_rds.ids}"]
+  security_groups     = ["${aws_security_group.rds-sg.id}"]
+  publicly_accessible = "${var.publicly_accessible}"
+  allowed_cidr_blocks = ["${var.allowed_cidr_blocks}"]
+}
+
