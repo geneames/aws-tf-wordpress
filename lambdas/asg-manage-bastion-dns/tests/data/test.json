@@ -1,11 +1,158 @@
-#!/bin/bash -xe
-if [ ! -f /etc/httpd/conf.d/", !Ref WPDirectory, ".conf ]; then
-   touch /etc/httpd/conf.d/", !Ref WPDirectory, ".conf
-   echo 'ServerName 127.0.0.1:80' >> /etc/httpd/conf.d/", !Ref WPDirectory, ".conf
-   echo 'DocumentRoot /var/www/wordpress/", !Ref WPDirectory, "' >> /etc/httpd/conf.d/", !Ref WPDirectory, ".conf
-   echo '<Directory /var/www/wordpress/", !Ref WPDirectory, ">' >> /etc/httpd/conf.d/", !Ref WPDirectory, ".conf
-   echo '  Options Indexes FollowSymLinks' >> /etc/httpd/conf.d/", !Ref WPDirectory, ".conf
-   echo '  AllowOverride All' >> /etc/httpd/conf.d/", !Ref WPDirectory, ".conf
-   echo '  Require all granted' >> /etc/httpd/conf.d/", !Ref WPDirectory, ".conf
-   echo '</Directory>' >> /etc/httpd/conf.d/", !Ref WPDirectory, ".conf
-fi
+{
+    "Reservations": [
+        {
+            "Groups": [],
+            "Instances": [
+                {
+                    "AmiLaunchIndex": 0,
+                    "ImageId": "ami-06fc11ae777adfe6f",
+                    "InstanceId": "i-0f37fb98082fa0d4f",
+                    "InstanceType": "t2.small",
+                    "KeyName": "sema-us-west-2-bastion",
+                    "Monitoring": {
+                        "State": "enabled"
+                    },
+                    "Placement": {
+                        "AvailabilityZone": "us-west-2a",
+                        "GroupName": "",
+                        "Tenancy": "default"
+                    },
+                    "PrivateDnsName": "ip-192-168-0-233.us-west-2.compute.internal",
+                    "PrivateIpAddress": "192.168.0.233",
+                    "ProductCodes": [],
+                    "PublicDnsName": "ec2-18-236-191-29.us-west-2.compute.amazonaws.com",
+                    "PublicIpAddress": "18.236.191.29",
+                    "State": {
+                        "Code": 16,
+                        "Name": "running"
+                    },
+                    "StateTransitionReason": "",
+                    "SubnetId": "subnet-078c7db2df1e8cfb8",
+                    "VpcId": "vpc-093e26c08f7d8f91b",
+                    "Architecture": "x86_64",
+                    "BlockDeviceMappings": [
+                        {
+                            "DeviceName": "/dev/xvda",
+                            "Ebs": {
+                                "DeleteOnTermination": true,
+                                "Status": "attached",
+                                "VolumeId": "vol-050d246d2e580d6fa"
+                            }
+                        }
+                    ],
+                    "ClientToken": "94c5a9df-da67-591e-8d47-53bb41877354_subnet-078c7db2df1e8cfb8_1",
+                    "EbsOptimized": false,
+                    "EnaSupport": true,
+                    "Hypervisor": "xen",
+                    "NetworkInterfaces": [
+                        {
+                            "Association": {
+                                "IpOwnerId": "amazon",
+                                "PublicDnsName": "ec2-18-236-191-29.us-west-2.compute.amazonaws.com",
+                                "PublicIp": "18.236.191.29"
+                            },
+                            "Attachment": {
+                                "AttachmentId": "eni-attach-02f592fe459dbfdf5",
+                                "DeleteOnTermination": true,
+                                "DeviceIndex": 0,
+                                "Status": "attached"
+                            },
+                            "Description": "sema-dev-wordpress-bastion-asg",
+                            "Groups": [
+                                {
+                                    "GroupName": "sema-dev-wordpress-bastion-sg",
+                                    "GroupId": "sg-0bc195c1f1a15a48e"
+                                }
+                            ],
+                            "Ipv6Addresses": [],
+                            "MacAddress": "06:62:43:e6:64:1c",
+                            "NetworkInterfaceId": "eni-074ea4e10fd1fa4ef",
+                            "OwnerId": "476778078169",
+                            "PrivateDnsName": "ip-192-168-0-233.us-west-2.compute.internal",
+                            "PrivateIpAddress": "192.168.0.233",
+                            "PrivateIpAddresses": [
+                                {
+                                    "Association": {
+                                        "IpOwnerId": "amazon",
+                                        "PublicDnsName": "ec2-18-236-191-29.us-west-2.compute.amazonaws.com",
+                                        "PublicIp": "18.236.191.29"
+                                    },
+                                    "Primary": true,
+                                    "PrivateDnsName": "ip-192-168-0-233.us-west-2.compute.internal",
+                                    "PrivateIpAddress": "192.168.0.233"
+                                }
+                            ],
+                            "SourceDestCheck": true,
+                            "Status": "in-use",
+                            "SubnetId": "subnet-078c7db2df1e8cfb8",
+                            "VpcId": "vpc-093e26c08f7d8f91b"
+                        }
+                    ],
+                    "RootDeviceName": "/dev/xvda",
+                    "RootDeviceType": "ebs",
+                    "SecurityGroups": [
+                        {
+                            "GroupName": "sema-dev-wordpress-bastion-sg",
+                            "GroupId": "sg-0bc195c1f1a15a48e"
+                        }
+                    ],
+                    "SourceDestCheck": true,
+                    "Tags": [
+                        {
+                            "Key": "Name",
+                            "Value": "sema-dev-wordpress-bastion-asg"
+                        },
+                        {
+                            "Key": "aws:autoscaling:groupName",
+                            "Value": "sema-dev-wordpress-bastion-asg-20190502094411029000000005"
+                        },
+                        {
+                            "Key": "Namespace",
+                            "Value": "sema"
+                        },
+                        {
+                            "Key": "aws:ec2launchtemplate:version",
+                            "Value": "2"
+                        },
+                        {
+                            "Key": "Stage",
+                            "Value": "dev"
+                        },
+                        {
+                            "Key": "Tier",
+                            "Value": "dmz"
+                        },
+                        {
+                            "Key": "Bastion-Cluster",
+                            "Value": "us-west-2-sema-dev-wordpress"
+                        },
+                        {
+                            "Key": "aws:ec2launchtemplate:id",
+                            "Value": "lt-015aa82d4360a77bd"
+                        }
+                    ],
+                    "VirtualizationType": "hvm",
+                    "CpuOptions": {
+                        "CoreCount": 1,
+                        "ThreadsPerCore": 1
+                    }
+                }
+            ],
+            "OwnerId": "476778078169",
+            "RequesterId": "903220451833",
+            "ReservationId": "r-069096e37f855a9a7"
+        }
+    ],
+    "ResponseMetadata": {
+        "RequestId": "6a572d0e-6246-4153-8742-3fad7f48a67d",
+        "HTTPStatusCode": 200,
+        "HTTPHeaders": {
+            "content-type": "text/xml;charset=UTF-8",
+            "transfer-encoding": "chunked",
+            "vary": "accept-encoding",
+            "date": "Thu, 02 May 2019 09:59:08 GMT",
+            "server": "AmazonEC2"
+        },
+        "RetryAttempts": 0
+    }
+}

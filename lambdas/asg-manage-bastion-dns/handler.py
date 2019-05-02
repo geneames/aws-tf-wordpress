@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import logging
 import json
@@ -62,7 +63,7 @@ def manage_dns_recordset(action_flag: str, ip_address: str, health_check_id: str
             }
         )
     except ClientError as e:
-        logger.debug(e)
+        logger.error(e)
         return None
 
     logger.debug(response)
@@ -87,7 +88,7 @@ def get_instance_ip_address(instance_id: str):
         public_ip_address = instance_data['Reservations'][0]['Instances'][0]['PublicIpAddress']
 
     except ClientError as e:
-        logger.debug(e)
+        logger.error(e)
         return public_ip_address
 
     return public_ip_address
@@ -167,7 +168,7 @@ def get_hc_id_for_ip_address(ip_address: str):
     """
 
     r53 = boto3.client('route53')
-    health_check_id = None
+    health_check_id = ''
     try:
         health_checks = r53.list_health_checks()
         for k in health_checks['HealthChecks']:
@@ -176,7 +177,7 @@ def get_hc_id_for_ip_address(ip_address: str):
 
     except ClientError as e:
         logger.debug(e)
-        return None
+        return health_check_id
 
     return health_check_id
 
@@ -197,32 +198,35 @@ def manage_bastion_dns(event: str, context: str):
     ip_address = get_instance_ip_address(instance_id)
     logger.debug(ip_address)
 
-    # Create Health Check & DNS entry for Bastion Instance
-    if event_type == 'EC2 Instance-launch Lifecycle Action':
-        health_check_id = create_health_check(ip_address)
-        response = manage_dns_recordset('CREATE', ip_address, health_check_id)
-        if response is not None:
-            logger.info('DNS record set and associated health check added for instance {}'
-                         .format(instance_id))
-        else:
-            logger.warning('Creation of DNS record set and associated health check failed for instance {}'
-                            .format(instance_id))
+    # Validate IP Address
+    if re.match('^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$',
+                ip_address):
+        # Create Health Check & DNS entry for Bastion Instance
+        if event_type == 'EC2 Instance-launch Lifecycle Action':
+            health_check_id = create_health_check(ip_address)
+            response = manage_dns_recordset('CREATE', ip_address, health_check_id)
+            if response is not None:
+                logger.info('DNS record set and associated health check added for instance {}'
+                             .format(instance_id))
+            else:
+                logger.warning('Creation of DNS record set and associated health check failed for instance {}'
+                                .format(instance_id))
 
-    # Remove DNS Entry & Health Check for Bastion Instance
-    elif event_type == 'EC2 Instance-terminate Lifecycle Action':
-        health_check_id = get_hc_id_for_ip_address(ip_address)
-        response = manage_dns_recordset('DELETE', ip_address, health_check_id)
-        response = delete_health_check(health_check_id)
-        if response is not None:
-            logger.info('DNS record set and associated health check removed for instance {}'
-                         .format(instance_id))
-        else:
-            logger.warning('Removal of DNS record set and associated health check failed for instance {}'
-                            .format(instance_id))
+        # Remove DNS Entry & Health Check for Bastion Instance
+        elif event_type == 'EC2 Instance-terminate Lifecycle Action':
+            health_check_id = get_hc_id_for_ip_address(ip_address)
+            response = manage_dns_recordset('DELETE', ip_address, health_check_id)
+            response = delete_health_check(health_check_id)
+            if response is not None:
+                logger.info('DNS record set and associated health check removed for instance {}'
+                             .format(instance_id))
+            else:
+                logger.warning('Removal of DNS record set and associated health check failed for instance {}'
+                                .format(instance_id))
 
-    # Not sure exactly going on...
-    else:
-        logger.warning('Instance lifecycle indeterminate.')
+        # Not sure exactly going on...
+        else:
+            logger.warning('Instance lifecycle indeterminate.')
 
     return response
 

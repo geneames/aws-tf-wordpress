@@ -54,16 +54,16 @@ data "aws_route53_zone" "domain" {
 ######################################################
 # Bastion User Data
 ######################################################
-data "template_file" "user_data" {
-  template = "${file("${path.module}/files/user_data.sh.tpl")}"
-
-  vars {
-    welcome_message = "${var.welcome_message}"
-    hostname        = "${var.name}-bastion.${join("",data.aws_route53_zone.domain.*.name)}"
-    search_domains  = "${join("",data.aws_route53_zone.domain.*.name)}"
-    ssh_user        = "${var.ssh_user}"
-  }
-}
+//data "template_file" "user_data" {
+//  template = "${file("${path.module}/files/user_data.sh.tpl")}"
+//
+//  vars {
+//    welcome_message = "${var.welcome_message}"
+//    hostname        = "${var.name}-bastion.${join("",data.aws_route53_zone.domain.*.name)}"
+//    search_domains  = "${join("",data.aws_route53_zone.domain.*.name)}"
+//    ssh_user        = "${var.ssh_user}"
+//  }
+//}
 
 ######################################################
 # Bastion Autoscaling Group
@@ -75,7 +75,8 @@ module "bastion-asg" {
   name                        = "${local.name}-bastion-asg"
   stage                       = "${local.stage}"
 
-  image_id                    = "${data.aws_ami.bastion-ami.id}"
+//  image_id                    = "${data.aws_ami.bastion-ami.id}"
+  image_id                    = "${var.image_id}"
   instance_type               = "${var.instance_type}"
   security_group_ids          = ["${aws_security_group.bastion-sg.id}"]
   subnet_ids                  = ["${data.aws_subnet_ids.subnets_for_asg.ids}"]
@@ -84,11 +85,10 @@ module "bastion-asg" {
   max_size                    = "${var.max_size}"
   wait_for_capacity_timeout   = "${var.wait_for_capacity_timeout}"
   associate_public_ip_address = true
-  user_data_base64              = "${base64encode(data.template_file.user_data.rendered)}"
+//  user_data_base64              = "${base64encode(data.template_file.user_data.rendered)}"
   key_name                    = "${var.key_name}"
   iam_instance_profile_name   = "${var.iam_instance_profile_name}"
-
-
+  health_check_grace_period   = "3600"
 
   tags = {
     Tier              = "dmz"
@@ -140,27 +140,14 @@ resource "aws_autoscaling_lifecycle_hook" "launch_hook" {
   autoscaling_group_name = "${module.bastion-asg.autoscaling_group_name}"
   lifecycle_transition = "autoscaling:EC2_INSTANCE_LAUNCHING"
   name = "bastion-asg-instance-launch-hook"
-  notification_target_arn = "${aws_sns_topic.asg-lifecycle-topic.arn}"
-  role_arn = "arn:aws:iam::476778078169:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
-  heartbeat_timeout = 300
+  heartbeat_timeout = 3600
   default_result = "ABANDON"
-
-
-  depends_on = [ "aws_sns_topic.asg-lifecycle-topic" ]
 }
 
 resource "aws_autoscaling_lifecycle_hook" "terminate_hook" {
   autoscaling_group_name = "${module.bastion-asg.autoscaling_group_name}"
   lifecycle_transition = "autoscaling:EC2_INSTANCE_TERMINATING"
   name = "bastion-asg-instance-terminate-hook"
-  notification_target_arn = "${aws_sns_topic.asg-lifecycle-topic.arn}"
-  role_arn = "arn:aws:iam::476778078169:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
-  heartbeat_timeout = 300
+  heartbeat_timeout = 3600
   default_result = "ABANDON"
-
-  depends_on = [ "aws_sns_topic.asg-lifecycle-topic" ]
-}
-
-resource "aws_sns_topic" "asg-lifecycle-topic" {
-  name = "bastion-asg-lifecycle-topic"
 }

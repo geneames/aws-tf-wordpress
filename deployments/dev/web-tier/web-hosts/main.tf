@@ -91,13 +91,14 @@ module "web_host_asg" {
   min_size                    = "${var.min_size}"
   max_size                    = "${var.max_size}"
   wait_for_capacity_timeout   = "${var.wait_for_capacity_timeout}"
-  associate_public_ip_address = true
+  associate_public_ip_address = "false"
   user_data_base64            = "${base64encode(data.template_file.user_data.rendered)}"
   key_name                    = "${var.key_name}"
   iam_instance_profile_name   = "${var.iam_instance_profile_name}"
+  health_check_grace_period   = "3600"
 
   tags = {
-    Tier              = "web"
+    Tier        = "web"
     Web-Cluster = "${var.aws_region}-${local.namespace}-${local.stage}-${local.name}"
   }
 
@@ -134,11 +135,25 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["${data.terraform_remote_state.network.vpc_cidr_block}"]
   }
 
+  ingress {
+    protocol  = "tcp"
+    from_port = 2049
+    to_port   = 2049
+    cidr_blocks = ["${data.terraform_remote_state.network.vpc_cidr_block}"]
+  }
+
+  ingress {
+    protocol  = "tcp"
+    from_port = 3306
+    to_port   = 3306
+    cidr_blocks = ["${data.terraform_remote_state.network.vpc_cidr_block}"]
+  }
+
   egress {
     protocol  = "-1"
     from_port = 0
     to_port   = 0
-    cidr_blocks = ["${data.terraform_remote_state.network.vpc_cidr_block}"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   lifecycle {

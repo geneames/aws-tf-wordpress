@@ -54,6 +54,7 @@ variable "enabled" {
 variable "image_id" {
   type        = "string"
   description = "The EC2 image ID to launch"
+  default     = ""
 }
 
 variable "instance_initiated_shutdown_behavior" {

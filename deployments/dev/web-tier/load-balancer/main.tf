@@ -98,7 +98,7 @@ resource "aws_security_group" "alb_sg" {
     protocol  = "tcp"
     from_port = 80
     to_port   = 80
-    cidr_blocks = ["${data.terraform_remote_state.network.vpc_cidr_block}"]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   lifecycle {
@@ -131,7 +131,7 @@ resource "aws_alb_target_group" "asg_tg" {
 }
 
 resource "aws_autoscaling_attachment" "web_asg_attachment" {
-  autoscaling_group_name = "${data.terraform_remote_state.web_host_asg.autoscaling_group_name}"
+  autoscaling_group_name = "${data.terraform_remote_state.web_host_asg.autoscaling_group_id}"
   alb_target_group_arn = "${aws_alb_target_group.asg_tg.arn}"
 }
 
@@ -169,6 +169,18 @@ data "aws_iam_policy_document" "bucket_policy" {
       type        = "AWS"
       identifiers = ["${data.aws_elb_service_account.main.id}"]
     }
+  }
+}
+
+resource "aws_route53_record" "www" {
+  name    = "wp.sema.io"
+  type    = "A"
+  zone_id = "${var.hosted_zone_id}"
+
+  alias {
+    evaluate_target_health = true
+    name = "${aws_alb.web_alb.dns_name}"
+    zone_id = "${aws_alb.web_alb.zone_id}"
   }
 }
 

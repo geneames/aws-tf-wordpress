@@ -64,3 +64,8 @@ variable log_bucket_name {
   description = "The availability zones to deploy the bastion servers into"
 }
 
+variable hosted_zone_id {
+  type        = "string"
+  description = "The Route 53 public zone"
+}
+
