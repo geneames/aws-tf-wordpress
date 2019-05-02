@@ -26,7 +26,7 @@ data "terraform_remote_state" "nfs" {
   config {
     bucket = "sema-terraform-state"
     region = "us-west-2"
-    key = "dev/nfs/terraform.state"
+    key = "dev/web-tier/nfs/terraform.state"
     dynamodb_table = "terraform-state-locking"
     encrypt = true
   }
@@ -96,32 +96,15 @@ module "web_host_asg" {
   key_name                    = "${var.key_name}"
   iam_instance_profile_name   = "${var.iam_instance_profile_name}"
 
-
-
   tags = {
-    Tier              = "dmz"
-    Bastion-Cluster = "${var.aws_region}-${local.namespace}-${local.stage}-${local.name}"
+    Tier              = "web"
+    Web-Cluster = "${var.aws_region}-${local.namespace}-${local.stage}-${local.name}"
   }
 
   # Auto-scaling policies and CloudWatch metric alarms
   autoscaling_policies_enabled           = "true"
   cpu_utilization_high_threshold_percent = "${var.cpu_utilization_high_threshold_percent}"
   cpu_utilization_low_threshold_percent  = "${var.cpu_utilization_low_threshold_percent}"
-}
-
-######################################################
-# ASG ALB Target Group
-######################################################
-resource "aws_alb_target_group" "asg_tg" {
-  name = "web-asg-alb-tg"
-  protocol = "HTTP"
-  port = 80
-  vpc_id = "${data.terraform_remote_state.network.vpc_id}"
-}
-
-resource "aws_autoscaling_attachment" "web_asg_attachment" {
-  autoscaling_group_name = "${module.web_host_asg.autoscaling_group_name}"
-  alb_target_group_arn = "${aws_alb_target_group.asg_tg.arn}"
 }
 
 ######################################################

@@ -47,7 +47,3 @@ output "autoscaling_group_health_check_type" {
   description = "`EC2` or `ELB`. Controls how health checking is done"
   value       = "${module.web_host_asg.autoscaling_group_health_check_type}"
 }
-
-output "autoscaling_group_alb_target_group_arn" {
-  value = "${aws_alb_target_group.asg_tg.arn}"
-}

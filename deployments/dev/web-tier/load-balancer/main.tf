@@ -2,9 +2,10 @@
 # Local Variables
 ######################################################
 locals {
-  namespace = "${var.namespace}"
-  stage     = "${var.stage}"
-  name      = "${var.name}"
+  namespace       = "${var.namespace}"
+  stage           = "${var.stage}"
+  name            = "${var.name}"
+  log_bucket_name = "${var.log_bucket_name}"
 }
 
 ######################################################
@@ -21,19 +22,16 @@ data "terraform_remote_state" "network" {
   }
 }
 
-######################################################
-# ALB Log Bucket Polcy
-######################################################
-data "template_file" "s3_logs_bucket_policy" {
-  template = "${file("${path.module}/files/alb_access_logs_s3_bucket_policy.json.tpl")}"
-
-  vars {
-    s3_bucket_arn = "${aws_s3_bucket.alb_logs.arn}"
-    aws_elb_service_account_arn = "${data.aws_elb_service_account.main.arn}"
+data "terraform_remote_state" "web_host_asg" {
+  backend = "s3"
+  config {
+    bucket = "sema-terraform-state"
+    region = "${var.aws_region}"
+    key = "dev/web-tier/web-hosts/terraform.state"
+    dynamodb_table = "terraform-state-locking"
+    encrypt = true
   }
 }
-
-data "aws_elb_service_account" "main" {}
 
 ######################################################
 # ALB Subnets
@@ -65,12 +63,10 @@ resource "aws_alb" "web_alb" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = ["${aws_security_group.alb_sg.id}"]
-  subnets            = "${data.aws_subnet_ids.subnets_for_alb.ids}"
-
-  enable_deletion_protection = true
+  subnets            = ["${data.aws_subnet_ids.subnets_for_alb.ids}"]
 
   access_logs {
-    bucket  = "${aws_s3_bucket.alb_logs.bucket}"
+    bucket  = "${aws_s3_bucket.log_bucket.bucket}"
     prefix  = "${var.name}"
     enabled = true
   }
@@ -92,14 +88,14 @@ resource "aws_security_group" "alb_sg" {
   }
 
   ingress {
-    protocol  = "http"
+    protocol  = "tcp"
     from_port = 80
     to_port   = 80
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
-    protocol  = "http"
+    protocol  = "tcp"
     from_port = 80
     to_port   = 80
     cidr_blocks = ["${data.terraform_remote_state.network.vpc_cidr_block}"]
@@ -110,9 +106,69 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-resource "aws_s3_bucket" "alb_logs" {
-  bucket = "web_alb_logs"
-  acl = "private"
-  policy = "${data.template_file.s3_logs_bucket_policy.rendered}"
+######################################################
+# ASG ALB Listener
+######################################################
+resource "aws_alb_listener" "web_listener" {
+  "default_action" {
+    type = "forward"
+    target_group_arn = "${aws_alb_target_group.asg_tg.arn}"
+  }
+
+  load_balancer_arn = "${aws_alb.web_alb.arn}"
+  port = 80
+  protocol = "HTTP"
+}
+
+######################################################
+# ASG ALB Target Group
+######################################################
+resource "aws_alb_target_group" "asg_tg" {
+  name = "web-asg-alb-tg"
+  protocol = "HTTP"
+  port = 80
+  vpc_id = "${data.terraform_remote_state.network.vpc_id}"
+}
+
+resource "aws_autoscaling_attachment" "web_asg_attachment" {
+  autoscaling_group_name = "${data.terraform_remote_state.web_host_asg.autoscaling_group_name}"
+  alb_target_group_arn = "${aws_alb_target_group.asg_tg.arn}"
+}
+
+######################################################
+# ALB Log Bucket & Policy
+######################################################
+resource "aws_s3_bucket" "log_bucket" {
+  bucket        = "${local.log_bucket_name}"
+  policy        = "${data.aws_iam_policy_document.bucket_policy.json}"
+  force_destroy = true
+  tags          = {
+    Name = "${var.name}-logs"
+  }
+
+  lifecycle_rule {
+    id      = "log-expiration"
+    enabled = "true"
+
+    expiration {
+      days = "7"
+    }
+  }
+}
+
+data "aws_elb_service_account" "main" {}
+
+data "aws_iam_policy_document" "bucket_policy" {
+  statement {
+    sid       = "AllowToPutLoadBalancerLogsToS3Bucket"
+    effect = "Allow"
+    actions   = ["s3:PutObject"]
+    resources = ["arn:aws:s3:::${local.log_bucket_name}/${var.name}/AWSLogs/*"]
+
+    principals {
+      type        = "AWS"
+      identifiers = ["${data.aws_elb_service_account.main.id}"]
+    }
+  }
 }
 

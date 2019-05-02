@@ -58,3 +58,9 @@ variable availability_zones {
   type        = "list"
   description = "The availability zones to deploy the bastion servers into"
 }
+
+variable log_bucket_name {
+  type        = "string"
+  description = "The availability zones to deploy the bastion servers into"
+}
+

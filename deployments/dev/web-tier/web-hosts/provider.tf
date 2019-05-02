@@ -6,7 +6,7 @@ terraform {
   backend "s3" {
     bucket = "sema-terraform-state"
     region = "us-west-2"
-    key = "dev/web/terraform.state"
+    key = "dev/web-tier/web-hosts/terraform.state"
     dynamodb_table = "terraform-state-locking"
     encrypt = true
   }
