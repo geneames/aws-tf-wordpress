@@ -14,8 +14,19 @@ data "terraform_remote_state" "network" {
   backend = "s3"
   config {
     bucket = "sema-terraform-state"
-    region = "${var.aws_region}"
+    region = "us-west-2"
     key = "dev/network/terraform.state"
+    dynamodb_table = "terraform-state-locking"
+    encrypt = true
+  }
+}
+
+data "terraform_remote_state" "nfs" {
+  backend = "s3"
+  config {
+    bucket = "sema-terraform-state"
+    region = "us-west-2"
+    key = "dev/nfs/terraform.state"
     dynamodb_table = "terraform-state-locking"
     encrypt = true
   }
@@ -36,13 +47,13 @@ data "aws_subnet_ids" "subnets_for_asg" {
 
   filter {
     name = "tag:Type"
-    values = ["public"]
+    values = ["private"]
   }
 }
 
-data "aws_ami" "bastion-ami" {
+data "aws_ami" "web-ami" {
   most_recent      = true
-  name_regex       = "^sema-bastion-*."
+  name_regex       = "^sema-web-*."
   owners           = ["self"]
 }
 
@@ -52,39 +63,36 @@ data "aws_route53_zone" "domain" {
 }
 
 ######################################################
-# Bastion User Data
+# Web Host User Data
 ######################################################
 data "template_file" "user_data" {
   template = "${file("${path.module}/files/user_data.sh.tpl")}"
 
   vars {
-    welcome_message = "${var.welcome_message}"
-    hostname        = "${var.name}-bastion.${join("",data.aws_route53_zone.domain.*.name)}"
-    search_domains  = "${join("",data.aws_route53_zone.domain.*.name)}"
-    ssh_user        = "${var.ssh_user}"
+    efs_dns_name = "${data.terraform_remote_state.nfs.efs_dns_name}"
   }
 }
 
 ######################################################
-# Bastion Autoscaling Group
+# Web Host Autoscaling Group
 ######################################################
-module "bastion-asg" {
+module "web_host_asg" {
   source = "git@github.com:geneames/terraform-aws-ec2-autoscale-group.git?ref=tags/0.1"
 
   namespace                   = "${local.namespace}"
-  name                        = "${local.name}-bastion-asg"
+  name                        = "${local.name}-web-asg"
   stage                       = "${local.stage}"
 
-  image_id                    = "${data.aws_ami.bastion-ami.id}"
+  image_id                    = "${data.aws_ami.web-ami.id}"
   instance_type               = "${var.instance_type}"
-  security_group_ids          = ["${aws_security_group.bastion-sg.id}"]
+  security_group_ids          = ["${aws_security_group.web_sg.id}"]
   subnet_ids                  = ["${data.aws_subnet_ids.subnets_for_asg.ids}"]
   health_check_type           = "${var.health_check_type}"
   min_size                    = "${var.min_size}"
   max_size                    = "${var.max_size}"
   wait_for_capacity_timeout   = "${var.wait_for_capacity_timeout}"
   associate_public_ip_address = true
-  user_data_base64              = "${base64encode(data.template_file.user_data.rendered)}"
+  user_data_base64            = "${base64encode(data.template_file.user_data.rendered)}"
   key_name                    = "${var.key_name}"
   iam_instance_profile_name   = "${var.iam_instance_profile_name}"
 
@@ -102,65 +110,55 @@ module "bastion-asg" {
 }
 
 ######################################################
-# Bastion Server Security
+# ASG ALB Target Group
 ######################################################
-resource "aws_security_group" "bastion-sg" {
-  name        = "${var.namespace}-${var.stage}-${var.name}-bastion-sg"
+resource "aws_alb_target_group" "asg_tg" {
+  name = "web-asg-alb-tg"
+  protocol = "HTTP"
+  port = 80
+  vpc_id = "${data.terraform_remote_state.network.vpc_id}"
+}
+
+resource "aws_autoscaling_attachment" "web_asg_attachment" {
+  autoscaling_group_name = "${module.web_host_asg.autoscaling_group_name}"
+  alb_target_group_arn = "${aws_alb_target_group.asg_tg.arn}"
+}
+
+######################################################
+# Web Host Security
+######################################################
+resource "aws_security_group" "web_sg" {
+  name        = "${var.namespace}-${var.stage}-${var.name}-web-sg"
   vpc_id      = "${data.terraform_remote_state.network.vpc_id}"
-  description = "Bastion security group (only SSH inbound access is allowed)"
+  description = "Web host security group (SSH & HTTP inbound access is allowed)"
 
   tags = {
-    Tier              = "dmz"
-    Bastion-Cluster = "${var.aws_region}-${var.namespace}-${var.stage}-${var.name}"
+    Tier              = "web"
+    Web-Cluster = "${var.aws_region}-${var.namespace}-${var.stage}-${var.name}"
   }
 
   ingress {
     protocol  = "tcp"
     from_port = 22
     to_port   = 22
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["${data.terraform_remote_state.network.vpc_cidr_block}"]
+  }
+
+  ingress {
+    protocol  = "tcp"
+    from_port = 80
+    to_port   = 80
+    cidr_blocks = ["${data.terraform_remote_state.network.vpc_cidr_block}"]
   }
 
   egress {
     protocol  = "-1"
     from_port = 0
     to_port   = 0
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = ["${data.terraform_remote_state.network.vpc_cidr_block}"]
   }
 
   lifecycle {
     create_before_destroy = true
   }
-}
-
-######################################################
-# Bastion Autoscaling Group Lifecycle Hooks
-######################################################
-resource "aws_autoscaling_lifecycle_hook" "launch_hook" {
-  autoscaling_group_name = "${module.bastion-asg.autoscaling_group_name}"
-  lifecycle_transition = "autoscaling:EC2_INSTANCE_LAUNCHING"
-  name = "bastion-asg-instance-launch-hook"
-  notification_target_arn = "${aws_sns_topic.asg-lifecycle-topic.arn}"
-  role_arn = "arn:aws:iam::476778078169:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
-  heartbeat_timeout = 300
-  default_result = "ABANDON"
-
-
-  depends_on = [ "aws_sns_topic.asg-lifecycle-topic" ]
-}
-
-resource "aws_autoscaling_lifecycle_hook" "terminate_hook" {
-  autoscaling_group_name = "${module.bastion-asg.autoscaling_group_name}"
-  lifecycle_transition = "autoscaling:EC2_INSTANCE_TERMINATING"
-  name = "bastion-asg-instance-terminate-hook"
-  notification_target_arn = "${aws_sns_topic.asg-lifecycle-topic.arn}"
-  role_arn = "arn:aws:iam::476778078169:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling"
-  heartbeat_timeout = 300
-  default_result = "ABANDON"
-
-  depends_on = [ "aws_sns_topic.asg-lifecycle-topic" ]
-}
-
-resource "aws_sns_topic" "asg-lifecycle-topic" {
-  name = "bastion-asg-lifecycle-topic"
 }
