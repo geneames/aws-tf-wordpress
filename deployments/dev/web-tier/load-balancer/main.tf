@@ -131,7 +131,7 @@ resource "aws_alb_target_group" "asg_tg" {
 }
 
 resource "aws_autoscaling_attachment" "web_asg_attachment" {
-  autoscaling_group_name = "${data.terraform_remote_state.web_host_asg.autoscaling_group_id}"
+  autoscaling_group_name = "${data.terraform_remote_state.web_host_asg.autoscaling_group_name}"
   alb_target_group_arn = "${aws_alb_target_group.asg_tg.arn}"
 }
 
